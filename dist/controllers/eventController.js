@@ -1,0 +1,228 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.deleteEvent = exports.updateEvent = exports.createEvent = exports.getEventById = exports.getUpcomingEvents = exports.getFeaturedEvent = exports.getEvents = void 0;
+const client_1 = require("@prisma/client");
+const prisma = new client_1.PrismaClient();
+// @desc    Get all events (with optional search/filters)
+// @route   GET /api/events
+// @access  Public
+const getEvents = async (req, res) => {
+    try {
+        const { search, category, isPublic, isFree } = req.query;
+        const whereClause = {};
+        if (search) {
+            whereClause.OR = [
+                { title: { contains: search, mode: "insensitive" } },
+                { description: { contains: search, mode: "insensitive" } },
+                { organizer: { name: { contains: search, mode: "insensitive" } } },
+            ];
+        }
+        if (category) {
+            whereClause.category = category;
+        }
+        if (isPublic !== undefined) {
+            whereClause.isPublic = isPublic === "true";
+        }
+        if (isFree !== undefined) {
+            whereClause.isFree = isFree === "true";
+        }
+        const events = await prisma.event.findMany({
+            where: whereClause,
+            include: {
+                organizer: {
+                    select: { id: true, name: true, avatar: true },
+                },
+                _count: {
+                    select: { participants: { where: { status: "APPROVED" } }, reviews: true },
+                },
+            },
+            orderBy: { date: "asc" },
+        });
+        res.json(events);
+    }
+    catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Server error fetching events" });
+    }
+};
+exports.getEvents = getEvents;
+// @desc    Get featured event
+// @route   GET /api/events/featured
+// @access  Public
+const getFeaturedEvent = async (req, res) => {
+    try {
+        const featured = await prisma.event.findFirst({
+            where: { featuredByAdmin: true, date: { gte: new Date() } },
+            include: {
+                organizer: { select: { id: true, name: true } }
+            },
+            orderBy: { date: 'asc' }
+        });
+        if (featured) {
+            res.json(featured);
+        }
+        else {
+            // Fallback to next upcoming public event
+            const nextEvent = await prisma.event.findFirst({
+                where: { isPublic: true, date: { gte: new Date() } },
+                include: {
+                    organizer: { select: { id: true, name: true } }
+                },
+                orderBy: { date: 'asc' }
+            });
+            res.json(nextEvent || null);
+        }
+    }
+    catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Server error fetching featured event" });
+    }
+};
+exports.getFeaturedEvent = getFeaturedEvent;
+// @desc    Get upcoming events
+// @route   GET /api/events/upcoming
+// @access  Public
+const getUpcomingEvents = async (req, res) => {
+    try {
+        const events = await prisma.event.findMany({
+            where: { isPublic: true, date: { gte: new Date() } },
+            take: 9,
+            include: {
+                organizer: { select: { id: true, name: true, avatar: true } }
+            },
+            orderBy: { date: 'asc' }
+        });
+        res.json(events);
+    }
+    catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Server error fetching upcoming events" });
+    }
+};
+exports.getUpcomingEvents = getUpcomingEvents;
+// @desc    Get single event by ID
+// @route   GET /api/events/:id
+// @access  Public
+const getEventById = async (req, res) => {
+    try {
+        const event = await prisma.event.findUnique({
+            where: { id: req.params.id },
+            include: {
+                organizer: {
+                    select: { id: true, name: true, avatar: true },
+                },
+                _count: {
+                    select: { participants: { where: { status: "APPROVED" } } },
+                },
+            },
+        });
+        if (event) {
+            res.json(event);
+        }
+        else {
+            res.status(404).json({ message: "Event not found" });
+        }
+    }
+    catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Server error fetching event" });
+    }
+};
+exports.getEventById = getEventById;
+// @desc    Create an event
+// @route   POST /api/events
+// @access  Private
+const createEvent = async (req, res) => {
+    try {
+        const { title, description, date, time, venue, isPublic, isFree, fee, category } = req.body;
+        if (!title || !description || !date || !time || !venue) {
+            return res.status(400).json({ message: "Please provide all required fields" });
+        }
+        const event = await prisma.event.create({
+            data: {
+                title,
+                description,
+                date: new Date(date),
+                time,
+                venue,
+                isPublic: isPublic !== undefined ? isPublic : true,
+                isFree: isFree !== undefined ? isFree : true,
+                fee: isFree ? 0 : parseFloat(fee),
+                category,
+                organizerId: req.user.id,
+            },
+        });
+        res.status(201).json(event);
+    }
+    catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Server error creating event" });
+    }
+};
+exports.createEvent = createEvent;
+// @desc    Update an event
+// @route   PUT /api/events/:id
+// @access  Private (Owner only)
+const updateEvent = async (req, res) => {
+    try {
+        const eventId = req.params.id;
+        const event = await prisma.event.findUnique({
+            where: { id: eventId }
+        });
+        if (!event) {
+            return res.status(404).json({ message: "Event not found" });
+        }
+        // Check ownership
+        if (event.organizerId !== req.user.id && req.user.role !== "ADMIN") {
+            return res.status(403).json({ message: "User not authorized to update this event" });
+        }
+        const { title, description, date, time, venue, isPublic, isFree, fee, category } = req.body;
+        const updatedEvent = await prisma.event.update({
+            where: { id: eventId },
+            data: {
+                title: title || event.title,
+                description: description || event.description,
+                date: date ? new Date(date) : event.date,
+                time: time || event.time,
+                venue: venue || event.venue,
+                isPublic: isPublic !== undefined ? isPublic : event.isPublic,
+                isFree: isFree !== undefined ? isFree : event.isFree,
+                fee: isFree ? 0 : (fee !== undefined ? parseFloat(fee) : event.fee),
+                category: category || event.category,
+            }
+        });
+        res.json(updatedEvent);
+    }
+    catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Server error updating event" });
+    }
+};
+exports.updateEvent = updateEvent;
+// @desc    Delete an event
+// @route   DELETE /api/events/:id
+// @access  Private (Owner or Admin)
+const deleteEvent = async (req, res) => {
+    try {
+        const eventId = req.params.id;
+        const event = await prisma.event.findUnique({
+            where: { id: eventId }
+        });
+        if (!event) {
+            return res.status(404).json({ message: "Event not found" });
+        }
+        // Check ownership
+        if (event.organizerId !== req.user.id && req.user.role !== "ADMIN") {
+            return res.status(403).json({ message: "User not authorized to delete this event" });
+        }
+        await prisma.event.delete({
+            where: { id: eventId }
+        });
+        res.json({ message: "Event removed" });
+    }
+    catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Server error deleting event" });
+    }
+};
+exports.deleteEvent = deleteEvent;
