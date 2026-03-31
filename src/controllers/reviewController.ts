@@ -1,9 +1,7 @@
 import {  PrismaClient  } from "@prisma/client";
 const prisma = new PrismaClient();
 
-// @desc    Get all reviews for an event
-// @route   GET /api/events/:id/reviews
-// @access  Public
+
 const getEventReviews = async (req, res) => {
   try {
     const reviews = await prisma.review.findMany({
@@ -23,9 +21,6 @@ const getEventReviews = async (req, res) => {
   }
 };
 
-// @desc    Create a review
-// @route   POST /api/events/:id/reviews
-// @access  Private
 const createReview = async (req, res) => {
   try {
     const eventId = req.params.id;
@@ -35,7 +30,6 @@ const createReview = async (req, res) => {
       return res.status(400).json({ message: "Please provide rating and comment" });
     }
 
-    // Check if user has participated in the event and status is APPROVED
     const participant = await prisma.participant.findUnique({
       where: {
         userId_eventId: {
@@ -49,7 +43,7 @@ const createReview = async (req, res) => {
       return res.status(403).json({ message: "You must be an approved participant to review this event" });
     }
 
-    // Check if review already exists
+    
     const existingReview = await prisma.review.findUnique({
       where: {
         userId_eventId: {
@@ -79,9 +73,6 @@ const createReview = async (req, res) => {
   }
 };
 
-// @desc    Update a review
-// @route   PUT /api/reviews/:id
-// @access  Private
 const updateReview = async (req, res) => {
   try {
     const reviewId = req.params.id;
@@ -114,9 +105,7 @@ const updateReview = async (req, res) => {
   }
 };
 
-// @desc    Delete a review
-// @route   DELETE /api/reviews/:id
-// @access  Private
+
 const deleteReview = async (req, res) => {
   try {
     const reviewId = req.params.id;
@@ -144,9 +133,6 @@ const deleteReview = async (req, res) => {
   }
 };
 
-// @desc    Get all reviews created by the logged in user
-// @route   GET /api/reviews/me
-// @access  Private
 const getMyReviews = async (req, res) => {
   try {
     const reviews = await prisma.review.findMany({
