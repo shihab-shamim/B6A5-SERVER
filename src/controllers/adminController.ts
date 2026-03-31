@@ -48,9 +48,7 @@ const deleteUser = async (req, res) => {
   }
 };
 
-// @desc    Get all events including private ones (Admin only)
-// @route   GET /api/admin/events
-// @access  Private/Admin
+
 const getAllEventsAdmin = async (req, res) => {
   try {
     const events = await prisma.event.findMany({
