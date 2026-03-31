@@ -1,9 +1,7 @@
 import {  PrismaClient  } from "@prisma/client";
 const prisma = new PrismaClient();
 
-// @desc    Get all events (with optional search/filters)
-// @route   GET /api/events
-// @access  Public
+
 const getEvents = async (req, res) => {
   try {
     const { search, category, isPublic, isFree } = req.query;
@@ -50,9 +48,7 @@ const getEvents = async (req, res) => {
   }
 };
 
-// @desc    Get featured event
-// @route   GET /api/events/featured
-// @access  Public
+
 const getFeaturedEvent = async (req, res) => {
   try {
     const featured = await prisma.event.findFirst({
@@ -66,7 +62,7 @@ const getFeaturedEvent = async (req, res) => {
     if (featured) {
       res.json(featured);
     } else {
-      // Fallback to next upcoming public event
+      
       const nextEvent = await prisma.event.findFirst({
         where: { isPublic: true, date: { gte: new Date() } },
          include: {
@@ -82,9 +78,7 @@ const getFeaturedEvent = async (req, res) => {
   }
 };
 
-// @desc    Get upcoming events
-// @route   GET /api/events/upcoming
-// @access  Public
+
 const getUpcomingEvents = async (req, res) => {
   try {
     const events = await prisma.event.findMany({
@@ -102,9 +96,7 @@ const getUpcomingEvents = async (req, res) => {
   }
 }
 
-// @desc    Get single event by ID
-// @route   GET /api/events/:id
-// @access  Public
+
 const getEventById = async (req, res) => {
   try {
     const event = await prisma.event.findUnique({
@@ -130,9 +122,7 @@ const getEventById = async (req, res) => {
   }
 };
 
-// @desc    Create an event
-// @route   POST /api/events
-// @access  Private
+
 const createEvent = async (req, res) => {
   try {
     const { title, description, date, time, venue, isPublic, isFree, fee, category } = req.body;
@@ -163,9 +153,7 @@ const createEvent = async (req, res) => {
   }
 };
 
-// @desc    Update an event
-// @route   PUT /api/events/:id
-// @access  Private (Owner only)
+
 const updateEvent = async (req, res) => {
   try {
     const eventId = req.params.id;
@@ -178,7 +166,7 @@ const updateEvent = async (req, res) => {
       return res.status(404).json({ message: "Event not found" });
     }
 
-    // Check ownership
+   
     if (event.organizerId !== req.user.id && req.user.role !== "ADMIN") {
       return res.status(403).json({ message: "User not authorized to update this event" });
     }
@@ -207,9 +195,7 @@ const updateEvent = async (req, res) => {
   }
 };
 
-// @desc    Delete an event
-// @route   DELETE /api/events/:id
-// @access  Private (Owner or Admin)
+
 const deleteEvent = async (req, res) => {
   try {
     const eventId = req.params.id;
@@ -222,7 +208,7 @@ const deleteEvent = async (req, res) => {
       return res.status(404).json({ message: "Event not found" });
     }
 
-    // Check ownership
+    
     if (event.organizerId !== req.user.id && req.user.role !== "ADMIN") {
       return res.status(403).json({ message: "User not authorized to delete this event" });
     }
