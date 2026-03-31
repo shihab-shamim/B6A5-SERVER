@@ -3,9 +3,7 @@ const stripe = new Stripe((process.env.STRIPE_SECRET_KEY as string) || "sk_test_
 import {  PrismaClient  } from "@prisma/client";
 const prisma = new PrismaClient();
 
-// @desc    Create Stripe Checkout Session
-// @route   POST /api/payments/create-session
-// @access  Private
+
 const createCheckoutSession = async (req, res) => {
   try {
     const { eventId } = req.body;
@@ -24,7 +22,7 @@ const createCheckoutSession = async (req, res) => {
       return res.status(400).json({ message: "This event is free, no payment required" });
     }
 
-    // Check if user is already a participant
+    
     const existingParticipant = await prisma.participant.findUnique({
       where: {
         userId_eventId: {
@@ -38,7 +36,7 @@ const createCheckoutSession = async (req, res) => {
       return res.status(400).json({ message: "You are already a participant" });
     }
 
-    // Create checkout session
+    
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ["card"],
       line_items: [
@@ -49,7 +47,7 @@ const createCheckoutSession = async (req, res) => {
               name: event.title,
               description: event.description.substring(0, 100),
             },
-            unit_amount: Math.round(event.fee * 100), // Stripe expects cents
+            unit_amount: Math.round(event.fee * 100), 
           },
           quantity: 1,
         },
@@ -72,9 +70,7 @@ const createCheckoutSession = async (req, res) => {
   }
 };
 
-// @desc    Stripe Webhook Handler
-// @route   POST /api/payments/webhook
-// @access  Public (Called by Stripe)
+
 const webhook = async (req, res) => {
   const sig = req.headers["stripe-signature"];
   const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
@@ -82,14 +78,14 @@ const webhook = async (req, res) => {
   let event;
 
   try {
-    // Note: req.body MUST be raw buffer for Stripe signature verification
+    
     event = stripe.webhooks.constructEvent(req.body, sig, endpointSecret);
   } catch (err) {
     console.error(`Webhook Error: ${err.message}`);
     return res.status(400).send(`Webhook Error: ${err.message}`);
   }
 
-  // Handle the checkout.session.completed event
+  
   if (event.type === "checkout.session.completed") {
     const session = event.data.object;
 
@@ -98,8 +94,7 @@ const webhook = async (req, res) => {
     const paymentId = session.payment_intent;
 
     try {
-      // Create or update participant
-      // For paid public events, maybe auto-approve. For private, PENDING.
+      
       const dbEvent = await prisma.event.findUnique({ where: { id: eventId } });
       const initialStatus: any = dbEvent?.isPublic ? "APPROVED" : "PENDING";
 
@@ -130,13 +125,12 @@ const webhook = async (req, res) => {
     }
   }
 
-  // Return a 200 response to acknowledge receipt of the event
+  
   res.send();
 };
 
-// @desc    Manually Verify Payment (Development/Fallback when webhooks are blocked)
-// @route   POST /api/payments/verify
-// @access  Private
+
+
 const verifyPayment = async (req, res) => {
   try {
     const { eventId } = req.body;
@@ -145,7 +139,7 @@ const verifyPayment = async (req, res) => {
     const event = await prisma.event.findUnique({ where: { id: eventId } });
     if (!event) return res.status(404).json({ message: "Event not found" });
 
-    // Query Stripe for recent checkout sessions to find if this user paid for this event
+    
     const sessions = await stripe.checkout.sessions.list({ limit: 20 });
     const paidSession = sessions.data.find(s => 
       s.client_reference_id === userId && 
@@ -157,7 +151,7 @@ const verifyPayment = async (req, res) => {
       return res.status(400).json({ message: "No completed payment found for this event" });
     }
 
-    // Auto-approve public events, set private to pending
+    
     const initialStatus: any = event.isPublic ? "APPROVED" : "PENDING";
     const paidAmount = paidSession.amount_total / 100;
 
