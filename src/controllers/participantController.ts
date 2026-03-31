@@ -1,9 +1,7 @@
 import {  PrismaClient  } from "@prisma/client";
 const prisma = new PrismaClient();
 
-// @desc    Join or request to join an event
-// @route   POST /api/events/:id/join
-// @access  Private
+
 const joinEvent = async (req, res) => {
   try {
     const eventId = req.params.id;
@@ -17,12 +15,12 @@ const joinEvent = async (req, res) => {
       return res.status(404).json({ message: "Event not found" });
     }
 
-    // Check if user is the organizer
+    
     if (event.organizerId === userId) {
       return res.status(400).json({ message: "Organizers cannot join their own event" });
     }
 
-    // Check if already participant
+    
     const existingParticipant = await prisma.participant.findUnique({
       where: {
         userId_eventId: {
@@ -36,16 +34,15 @@ const joinEvent = async (req, res) => {
       return res.status(400).json({ message: `You have already ${existingParticipant.status.toLowerCase()} this event` });
     }
 
-    // Determine initial status based on event rules
+    
     let initialStatus = "PENDING";
     
-    // If event is public and free, auto-approve
+    
     if (event.isPublic && event.isFree) {
       initialStatus = "APPROVED";
     }
 
-    // Wait, for paid events, the payment process should handle approval, 
-    // but for now we create a pending request.
+    
     const participant = await prisma.participant.create({
       data: {
         userId,
@@ -67,9 +64,7 @@ const joinEvent = async (req, res) => {
   }
 };
 
-// @desc    Get event participants
-// @route   GET /api/events/:id/participants
-// @access  Private (Owner)
+
 const getEventParticipants = async (req, res) => {
   try {
     const eventId = req.params.id;
@@ -101,12 +96,10 @@ const getEventParticipants = async (req, res) => {
   }
 };
 
-// @desc    Update participant status (approve/reject/ban)
-// @route   PUT /api/participants/:id
-// @access  Private (Owner)
+
 const updateParticipantStatus = async (req, res) => {
   try {
-    const { status } = req.body; // "APPROVED", "REJECTED", "BANNED"
+    const { status } = req.body; 
     const participantId = req.params.id;
 
     if (!["APPROVED", "REJECTED", "BANNED"].includes(status)) {
@@ -141,9 +134,7 @@ const updateParticipantStatus = async (req, res) => {
   }
 };
 
-// @desc    Get current user's participant status for an event
-// @route   GET /api/events/:id/my-status
-// @access  Private
+
 const getMyParticipantStatus = async (req, res) => {
   try {
     const eventId = req.params.id;
@@ -169,9 +160,7 @@ const getMyParticipantStatus = async (req, res) => {
   }
 };
 
-// @desc    Get current user's payment and participation history
-// @route   GET /api/events/my-payments
-// @access  Private
+
 const getPaymentHistory = async (req, res) => {
   try {
     const userId = req.user.id;
