@@ -11,12 +11,11 @@ import {
  } from "../controllers/eventController";
 import {  protect  } from "../middleware/authMiddleware";
 
-// Public routes
 router.get("/", getEvents);
 router.get("/featured", getFeaturedEvent);
 router.get("/upcoming", getUpcomingEvents);
 
-// specific protected routes must come before /:id
+
 import {  getPaymentHistory  } from "../controllers/participantController";
 router.get("/my-payments", protect, getPaymentHistory);
 
