@@ -22,9 +22,7 @@ const getUsers = async (req, res) => {
   }
 };
 
-// @desc    Delete a user (Admin only)
-// @route   DELETE /api/admin/users/:id
-// @access  Private/Admin
+
 const deleteUser = async (req, res) => {
   try {
     const user = await prisma.user.findUnique({
