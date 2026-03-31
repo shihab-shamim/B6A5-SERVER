@@ -1,9 +1,7 @@
 import {  PrismaClient  } from "@prisma/client";
 const prisma = new PrismaClient();
 
-// @desc    Send an invitation
-// @route   POST /api/events/:id/invite
-// @access  Private (Owner)
+
 const sendInvitation = async (req, res) => {
   try {
     const eventId = req.params.id;
@@ -34,7 +32,7 @@ const sendInvitation = async (req, res) => {
       return res.status(404).json({ message: "User with this email not found" });
     }
 
-    // Check if user is already a participant
+    
     const existingParticipant = await prisma.participant.findUnique({
       where: {
         userId_eventId: {
@@ -48,7 +46,7 @@ const sendInvitation = async (req, res) => {
       return res.status(400).json({ message: "User is already an active participant or has requested to join" });
     }
 
-    // Check if already invited
+    
     const existingInvitation = await prisma.invitation.findUnique({
       where: {
         eventId_inviteeId: {
@@ -78,9 +76,7 @@ const sendInvitation = async (req, res) => {
   }
 };
 
-// @desc    Get my invitations
-// @route   GET /api/invitations
-// @access  Private
+
 const getMyInvitations = async (req, res) => {
   try {
     const invitations = await prisma.invitation.findMany({
@@ -103,13 +99,11 @@ const getMyInvitations = async (req, res) => {
   }
 };
 
-// @desc    Accept or decline invitation
-// @route   PUT /api/invitations/:id
-// @access  Private
+
 const updateInvitation = async (req, res) => {
   try {
     const invitationId = req.params.id;
-    const { status } = req.body; // "ACCEPTED", "DECLINED"
+    const { status } = req.body; 
 
     if (!["ACCEPTED", "DECLINED"].includes(status)) {
       return res.status(400).json({ message: "Invalid status" });
@@ -128,17 +122,15 @@ const updateInvitation = async (req, res) => {
       return res.status(403).json({ message: "Not authorized to update this invitation" });
     }
 
-    // Update invitation status
+    
     const updatedInvitation = await prisma.invitation.update({
       where: { id: invitationId },
       data: { status },
     });
 
-    // If accepted, add as participant
+    
     if (status === "ACCEPTED") {
-      // Logic for paid events could be different (need payment first),
-      // but assuming accepting an invitation for a paid event puts them in PENDING till paid,
-      // or directly approved if free.
+      
       const participantStatus = invitation.event.isFree ? "APPROVED" : "PENDING";
       
       await prisma.participant.upsert({
