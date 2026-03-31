@@ -1,9 +1,7 @@
 import {  PrismaClient  } from "@prisma/client";
 const prisma = new PrismaClient();
 
-// @desc    Get all users (Admin only)
-// @route   GET /api/admin/users
-// @access  Private/Admin
+
 const getUsers = async (req, res) => {
   try {
     const users = await prisma.user.findMany({
