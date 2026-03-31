@@ -4,9 +4,7 @@ import {  generateToken  } from "../utils/auth";
 
 const prisma = new PrismaClient();
 
-// @desc    Register a new user
-// @route   POST /api/auth/register
-// @access  Public
+
 const registerUser = async (req, res) => {
   try {
     const { name, email, password } = req.body;
@@ -15,7 +13,7 @@ const registerUser = async (req, res) => {
       return res.status(400).json({ message: "Please include all fields" });
     }
 
-    // Check if user exists
+    
     const userExists = await prisma.user.findUnique({
       where: { email },
     });
@@ -24,11 +22,11 @@ const registerUser = async (req, res) => {
       return res.status(400).json({ message: "User already exists" });
     }
 
-    // Hash password
+    
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
-    // Create user
+    
     const user = await prisma.user.create({
       data: {
         name,
@@ -55,9 +53,7 @@ const registerUser = async (req, res) => {
   }
 };
 
-// @desc    Authenticate a user
-// @route   POST /api/auth/login
-// @access  Public
+
 const loginUser = async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -70,7 +66,7 @@ const loginUser = async (req, res) => {
       where: { email },
     });
 
-    // Check user and password match
+    
     if (user && (await bcrypt.compare(password, user.password))) {
       res.json({
         id: user.id,
@@ -89,9 +85,7 @@ const loginUser = async (req, res) => {
   }
 };
 
-// @desc    Get current user
-// @route   GET /api/auth/me
-// @access  Private
+
 const getMe = async (req, res) => {
   try {
     const user = {
@@ -108,9 +102,7 @@ const getMe = async (req, res) => {
   }
 };
 
-// @desc    Update user profile
-// @route   PUT /api/auth/profile
-// @access  Private
+
 const updateProfile = async (req, res) => {
   try {
     const user = await prisma.user.findUnique({
